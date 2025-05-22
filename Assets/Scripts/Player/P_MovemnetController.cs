@@ -1,19 +1,11 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerWalk : MonoBehaviour
+public class P_MovementController : MonoBehaviour
 {
-    public InputActionAsset InputActions;
-
-    private InputAction m_moveAction;
-    private InputAction m_lookAction;
-    private InputAction m_jumpAction;
-    private InputAction m_sprintAction;
-    private InputAction m_pauseActionPlayer;
-    private InputAction m_pauseActionUI;
-
     private Vector2 m_moveAmt;
     private Vector2 m_lookAmt;
+
     private Animator m_animator;
     private float _animationBlend;
     private CharacterController m_characterController;
@@ -50,26 +42,8 @@ public class PlayerWalk : MonoBehaviour
 
     public GameObject PauseDisplay;
 
-    private void OnEnable()
-    {
-        InputActions.FindActionMap("Player").Enable();
-    }
-
-    private void OnDisable()
-    {
-        InputActions.FindActionMap("Player").Disable();
-    }
-
     private void Awake()
     {
-        m_moveAction = InputActions.FindAction("Player/Move");
-        m_lookAction = InputActions.FindAction("Player/Look");
-        m_jumpAction = InputActions.FindAction("Player/Jump");
-        m_sprintAction = InputActions.FindAction("Player/Sprint");
-
-        m_pauseActionPlayer = InputActions.FindAction("Player/Pause");
-        m_pauseActionUI = InputActions.FindAction("UI/Pause");
-
         m_animator = GetComponent<Animator>();
         m_characterController = GetComponent<CharacterController>();
     }
@@ -81,8 +55,8 @@ public class PlayerWalk : MonoBehaviour
 
     private void Update()
     {
-        m_moveAmt = m_moveAction.ReadValue<Vector2>();
-        m_lookAmt = m_lookAction.ReadValue<Vector2>();
+        m_moveAmt = InputManager.Instance.MoveInput;
+        m_lookAmt = InputManager.Instance.LookInput;
 
         JumpAndGravity();
         GroundedCheck();
@@ -96,7 +70,7 @@ public class PlayerWalk : MonoBehaviour
 
     private void Walking()
     {
-        float targetSpeed = m_sprintAction.IsPressed() ? SprintSpeed : WalkSpeed;
+        float targetSpeed = InputManager.Instance.SprintHeld ? SprintSpeed : WalkSpeed;
 
         if (m_moveAmt == Vector2.zero) targetSpeed = 0.0f;
 
@@ -144,8 +118,9 @@ public class PlayerWalk : MonoBehaviour
             }
 
             // Jump
-            if (m_jumpAction.WasPressedThisFrame() && _jumpTimeoutDelta <= 0.0f)
+            if (InputManager.Instance.JumpPressed && _jumpTimeoutDelta <= 0.0f)
             {
+                Debug.Log("Jump");
                 // 원하는 높이 H에 도달하기 위해 필요한 속도는 √(H × -2 × G)이다.
                 // H : 도달하려는 원하는 높이 (높이 값, 예: 미터 단위)
                 // G : 중력 가속도 (보통 음수 값, 예: -9.81 m/s²)
@@ -157,7 +132,6 @@ public class PlayerWalk : MonoBehaviour
                     m_animator.SetBool("Jump", true);
             }
 
-            // jump timeout
             if (_jumpTimeoutDelta >= 0.0f)
                 _jumpTimeoutDelta -= Time.deltaTime;
         }
@@ -176,7 +150,6 @@ public class PlayerWalk : MonoBehaviour
             }
         }
 
-        // apply gravity over time if under terminal (multiply by delta time twice to linearly speed up over time)
         if (_verticalVelocity < _terminalVelocity)
         {
             _verticalVelocity += Gravity * Time.deltaTime;
@@ -215,17 +188,13 @@ public class PlayerWalk : MonoBehaviour
 
     private void DisplayPause()
     {
-        if (m_pauseActionPlayer.WasPressedThisFrame())
+        if (InputManager.Instance.PausePressed)
         {
             PauseDisplay.SetActive(true);
-            InputActions.FindActionMap("Player").Disable();
-            InputActions.FindActionMap("UI").Enable();
         }
-        else if (m_pauseActionUI.WasPressedThisFrame())
+        else if (InputManager.Instance.PausePressed)
         {
             PauseDisplay.SetActive(false);
-            InputActions.FindActionMap("UI").Disable();
-            InputActions.FindActionMap("Player").Enable();
         }
     }
 
